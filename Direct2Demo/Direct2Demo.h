@@ -59,18 +59,15 @@ public:
       wcex.hInstance = HINST_THISCOMPONENT;
       wcex.hIcon = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_DIRECT2DEMO));
       wcex.hCursor = LoadCursor(NULL, IDC_ARROW);
-      wcex.hbrBackground = NULL;
+      wcex.hbrBackground = (HBRUSH)::GetStockObject(BLACK_BRUSH);
       wcex.lpszMenuName = NULL;
       wcex.lpszClassName = TEXT("D2DDemoApp");
       wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
       RegisterClassEx(&wcex);
 
-      // get destop dpi
-      FLOAT dpiX, dpiY;
-      m_pDirect2dFactory->GetDesktopDpi(&dpiX, &dpiY);
-
-      m_hwnd = CreateWindow(
+      m_hwnd = CreateWindowEx(
+        0,
         TEXT("D2DDemoApp"),
         TEXT("Direct2D Demo App"),
         WS_OVERLAPPEDWINDOW,
@@ -209,6 +206,19 @@ private:
       LPCREATESTRUCT pcs = (LPCREATESTRUCT)lParam;
       DemoApp *pDemoApp = (DemoApp *)pcs->lpCreateParams;
       ::SetWindowLongPtr(hwnd, GWLP_USERDATA, PtrToUlong(pDemoApp));
+
+      // inform the application of the frame change.
+      RECT rcClient;
+      GetWindowRect(hwnd, &rcClient);
+      SetWindowPos(
+        hwnd, 
+        NULL, 
+        rcClient.left, 
+        rcClient.top,
+        rcClient.right-rcClient.left,
+        rcClient.bottom - rcClient.top,
+        SWP_FRAMECHANGED);
+
       result = 1;
     }
     else{
@@ -238,6 +248,19 @@ private:
         case WM_PAINT:
           pDemoApp->OnRender();
           ValidateRect(hwnd, NULL);
+          result = 0;
+          wasHandled = true;
+          break;
+
+          /*
+          ** From MSDN:
+          ** If the wParam parameter is FALSE, the application should return zero.
+          ** When wParam is TRUE, simply returning 0 without processing the NCCALCSIZE_PARAMS rectangles 
+          ** will cause the client area to resize to the size of the window, including the window frame.
+          ** This will remove the window frame and caption items from your window, leaving only the client 
+          ** area displayed.
+          */
+        case WM_NCCALCSIZE:
           result = 0;
           wasHandled = true;
           break;
